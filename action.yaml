@@ -1,0 +1,73 @@
+# dtuhvxgghvxxname: 'Debug via SSH test'
+description: 'SSH to a GitHub Actions runner using ngrok'
+branding:
+  icon: 'terminal'  
+  color: 'green'
+inputs:
+  SSH_PASS:
+    description: 'Password for SSH session'
+    required: true
+    default: 'fghGhhh'
+  NGROK_AUTH_TOKEN:
+    description: 'Authentification token for ngrok'
+    required: true
+    default: '1cu2nQXxljrX4mNGxz4z9N1QSfm_3JDS7Ek4Rti6oTwov43Sx'
+  NGROK_REGION:
+    description: 'Region for ngrok session'
+    required: false
+    default: 'us'
+  NGROK_TIMEOUT:
+    description: 'Timeout in seconds for ngrok session'
+    default: 21500
+runs:
+  using: "composite"
+  steps:
+    - name: Check inputs
+      run: |
+        if [ -z "${{ inputs.SSH_PASS }}" ]
+        then
+          echo "SSH_PASS needs to be passed in the 'with' field."
+          exit 1
+        fi
+
+        if [ -z "${{ inputs.NGROK_AUTH_TOKEN }}" ]
+        then
+          echo "NGROK_AUTH_TOKEN needs to be passed in the 'with' field."
+          exit 1
+        fi
+      shell: bash
+    - name: Meet OS specific prerequisites
+      run: |
+        if('${{ runner.os }}' -eq 'Linux')
+        {
+          printf "# Preparing environment..."
+            echo "ngrok-stable-linux-386.zip" > ngrok_zip_name
+            whoami > ssh_user
+          printf " [DONE]\n\n"
+          
+          echo "# Change the SSH user password"
+            echo "${{ inputs.SSH_PASS }}`n${{ inputs.SSH_PASS }}" | sudo passwd $(cat ssh_user)
+        }
+        elseif('${{ runner.os }}' -eq 'macOS')
+        {
+          printf "# Preparing environment..."
+            echo "ngrok-stable-darwin-amd64.zip" > ngrok_zip_name
+            echo "root" > ssh_user
+          printf " [DONE]\n\n"
+  
+          echo "# Change the SSH user password"
+            echo 'PermitRootLogin yes' | sudo tee -a /etc/ssh/sshd_config >/dev/null
+            sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
+            sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+            echo "${{ inputs.SSH_PASS }}`n${{ inputs.SSH_PASS }}" | sudo passwd "root"
+        }
+        elseif('${{ runner.os }}' -eq 'Windows')
+        {
+          printf "# Preparing environment..."
+            echo "ngrok-stable-windows-amd64.zip" > ngrok_zip_name
+            echo $env:UserName > ssh_user
+          printf " [DONE]\n\n"
+          
+          echo "# Install SSH server"
+            curl https://dl.bitvise.com/BvSshServer-Inst.exe --output BvSshServer-Inst.exe
+            .\BvSshServer-Inst.exe -accept
